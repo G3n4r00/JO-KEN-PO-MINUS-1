@@ -1,13 +1,16 @@
 ﻿using Figgle;
+using Jokempo;
 using System.Text.Json;
 
-//Criação da função para gerar números aleatórios
+/// <summary>
+/// Gerador de números aleatórios utilizado para seleção de jogadas do computador.
+/// </summary>
 Random random = new Random();
 
-//Função para salvar a pontuação
-
-// Dicionário para armazenar estatísticas dos jogadores (nome -> (vitórias, empates, derrotas))
-Dictionary<string, (int vitorias, int empates, int derrotas)> jogadores = new Dictionary<string, (int, int, int)>();
+/// <summary>
+/// Dicionário para armazenar estatísticas dos jogadores, mapeando nome do jogador para suas estatísticas.
+/// </summary>
+Dictionary<string, PlayerStatistics> jogadores = new Dictionary<string, PlayerStatistics>();
 
 #region Métodos
 /// <summary>
@@ -31,6 +34,10 @@ void LimparTela()
     ExibirBanner("Jokempo -1");
 }
 
+/// <summary>
+/// Exibe uma barra de progresso animada para simular o processo de descoberta do vencedor.
+/// <param name="progressoMaximo">determina a duração do progresso da barra.</param>
+/// </summary>
 void MostrarBarraProgresso(int progressoMaximo)
 {
     // Limpa a tela antes de mostrar a barra de progresso
@@ -192,6 +199,9 @@ string RegistrarJogador()
     Console.SetCursorPosition(Console.WindowWidth / 2, Console.CursorTop);
     string nomeJogador = Console.ReadLine();
 
+    // Normaliza o nome do jogador (remove espaços extras, converte para título)
+    nomeJogador = NormalizarNomeJogador(nomeJogador);
+
     while (string.IsNullOrEmpty(nomeJogador))
     {
         Console.BackgroundColor = ConsoleColor.DarkRed;
@@ -200,21 +210,44 @@ string RegistrarJogador()
         Console.SetCursorPosition(Console.WindowWidth / 2, Console.CursorTop - 2);
         LimparLinha();
         Console.SetCursorPosition(Console.WindowWidth / 2, Console.CursorTop);
-        nomeJogador = Console.ReadLine();
+        nomeJogador = NormalizarNomeJogador(Console.ReadLine());
     }
 
+    // Se o jogador não existir, cria um novo registro de estatísticas
     if (!jogadores.ContainsKey(nomeJogador))
     {
-        jogadores[nomeJogador] = (0, 0, 0);
+        jogadores[nomeJogador] = new PlayerStatistics();
     }
 
     return nomeJogador;
 }
 
 /// <summary>
-/// Obtém a escolha do jogador.
+/// Normaliza o nome do jogador, removendo espaços extras e formatando a capitalização.
 /// </summary>
-/// <returns>O caractere representando a escolha do jogador.</returns>
+/// <param name="nome">Nome original do jogador.</param>
+/// <returns>Nome do jogador formatado.</returns>
+string NormalizarNomeJogador(string nome)
+{
+    if (string.IsNullOrWhiteSpace(nome))
+        return string.Empty;
+
+    // Remove espaços extras no início e no fim
+    nome = nome.Trim();
+
+    // Converte a primeira letra de cada palavra para maiúscula
+    return string.Join(" ",
+        nome.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(palavra =>
+                char.ToUpper(palavra[0]) +
+                palavra.Substring(1).ToLower()));
+}
+
+/// <summary>
+/// Obtém as escolhas do jogador para duas mãos no jogo Jokempo.
+/// </summary>
+/// <returns>Uma tupla contendo os caracteres representando as duas mãos escolhidas.</returns>
+
 (char mao1, char mao2) ObterOpcoesJogador()
 {
     char mao1 = ExibirMenu("Escolha a primeira mão!",
@@ -230,6 +263,12 @@ string RegistrarJogador()
     return (mao1, mao2); // Retorna ambas as opções em uma tupla
 }
 
+/// <summary>
+/// Permite ao jogador escolher uma mão entre duas opções com um limite de tempo.
+/// </summary>
+/// <param name="mao1">Primeira opção de mão.</param>
+/// <param name="mao2">Segunda opção de mão.</param>
+/// <returns>A mão escolhida pelo jogador.</returns>
 char EscolherMaoEntreDuas(char mao1, char mao2)
 {
     // Cria um dicionário para mapear os valores para as descrições
@@ -265,13 +304,17 @@ char EscolherMaoEntreDuas(char mao1, char mao2)
             Thread.Sleep(1000);
 
             // Se já houver uma escolha, sai do loop
-            if (escolhaJogador != '\0') break;
+            if (escolhaJogador != '\0')
+            {
+                
+                break;
+            }
         }
 
-        // Se não houver escolha até o final do tempo, retorna uma escolha padrão (por exemplo, '0')
+        // Se não houver escolha até o final do tempo, retorna uma escolha padrão
         if (escolhaJogador == '\0')
         {
-            escolhaJogador = mao1;  // Ou alguma lógica para escolha padrão
+            escolhaJogador = mao1;
         }
     });
 
@@ -283,7 +326,15 @@ char EscolherMaoEntreDuas(char mao1, char mao2)
     return escolhaJogador;
 }
 
-//Função para decidir a jogada final do computador com base nas jogadas do jogador
+/// <summary>
+/// Determina a jogada final do computador com base nas jogadas do jogador e suas próprias opções.
+/// </summary>
+/// <param name="j1">Primeira mão do jogador.</param>
+/// <param name="j2">Segunda mão do jogador.</param>
+/// <param name="c1">Primeira mão do computador.</param>
+/// <param name="c2">Segunda mão do computador.</param>
+/// <returns>A mão escolhida pelo computador com maior probabilidade de vitória.</returns>
+
 char jogadaComputador(char j1, char j2, char c1, char c2)
 {
     var dicJogadasVencidas = new Dictionary<char, char>
@@ -315,7 +366,7 @@ char jogadaComputador(char j1, char j2, char c1, char c2)
 /// <summary>
 /// Retorna o nome correspondente à opção escolhida.
 /// </summary>
-/// <param name="opcao">Opção escolhida pelo jogador.</param>
+/// <param name="opcao">Opção escolhida.</param>
 /// <returns>Nome da opção.</returns>
 string ObterNomeOpcao(char opcao)
 {
@@ -329,12 +380,9 @@ string ObterNomeOpcao(char opcao)
 }
 
 /// <summary>
-/// Executa uma rodada do jogo Jokempo.
-/// O jogador escolhe uma opção, o computador escolhe aleatoriamente outra, e o resultado é avaliado.
+/// Gera as escolhas aleatórias do computador para duas mãos.
 /// </summary>
-/// <param name="opcao">Opção escolhida pelo jogador (0 = Pedra, 1 = Papel, 2 = Tesoura)</param>
-/// <returns>Retorna 1 se o jogador venceu, 0 se houve empate e -1 se o computador venceu.</returns>
-/// 
+/// <returns>Uma tupla contendo os caracteres representando as duas mãos do computador.</returns>
 
 (char maocomp1, char maocomp2) EscolhaMaosComputador()
 {
@@ -346,12 +394,28 @@ string ObterNomeOpcao(char opcao)
     return ((char)(opcoes[0] + '0'), (char)(opcoes[1] + '0'));
 }
 
+/// <summary>
+/// Exibe as jogadas escolhidas pelo jogador e pelo computador.
+/// </summary>
+/// <param name="jogador1">Primeira mão do jogador.</param>
+/// <param name="jogador2">Segunda mão do jogador.</param>
+/// <param name="comp1">Primeira mão do computador.</param>
+/// <param name="comp2">Segunda mão do computador.</param>
+
 void MostrarJogadas(char jogador1, char jogador2, char comp1, char comp2)
 {
     LimparTela();
 
     EscreverMensagem($"Você escolheu {ObterNomeOpcao(jogador1)} e {ObterNomeOpcao(jogador2)} e Eu escolhi {ObterNomeOpcao(comp1)} e {ObterNomeOpcao(comp2)}.");
 }
+
+/// <summary>
+/// Executa uma rodada do jogo Jokempo, comparando a escolha do jogador com a do computador.
+/// </summary>
+/// <param name="opcao">Opção final escolhida pelo jogador.</param>
+/// <param name="opcaoPC">Opção final escolhida pelo computador.</param>
+/// <returns>Resultado da rodada (-1 = derrota do jogador, 0 = empate, 1 = vitória do jogador).</returns>
+
 int JogarRodada(char opcao, char opcaoPC)
 {
     LimparTela();
@@ -378,11 +442,12 @@ int JogarRodada(char opcao, char opcaoPC)
 }
 
 /// <summary>
-/// Avalia o resultado de uma rodada com base nas escolhas do jogador e do computador.
+/// Valida o resultado de uma rodada comparando as jogadas do jogador e do computador.
 /// </summary>
 /// <param name="opcaoJogador">Opção escolhida pelo jogador.</param>
 /// <param name="opcaoPC">Opção escolhida pelo computador.</param>
-/// <returns>Retorna 1 se o jogador venceu, 0 se houve empate e -1 se o computador venceu.</returns>
+/// <returns>Resultado da rodada: 1 (vitória do jogador), 0 (empate), -1 (vitória do computador).</returns>
+
 int ValidaRodada(char opcaoJogador, char opcaoPC)
 {
     int resultado = opcaoJogador switch
@@ -398,43 +463,67 @@ int ValidaRodada(char opcaoJogador, char opcaoPC)
 }
 
 /// <summary>
-/// Atualiza as estatísticas do jogador com base no resultado da rodada.
+/// Atualiza as estatísticas do jogador após cada rodada.
 /// </summary>
-/// <param name="nomeJogador">Nome do jogador.</param>
+/// <param name="nomeJogador">Nome do jogador a ter as estatísticas atualizadas.</param>
 /// <param name="resultado">Resultado da rodada (-1 = derrota, 0 = empate, 1 = vitória).</param>
+
 void AtualizarEstatisticas(string nomeJogador, int resultado)
 {
-    // Se o jogador não existe, cria uma entrada no dicionário com valores iniciais
+    // Se o jogador ainda não existir no dicionário, adiciona
     if (!jogadores.ContainsKey(nomeJogador))
     {
-        jogadores[nomeJogador] = (0, 0, 0); // Inicializa com 0 vitórias, 0 empates e 0 derrotas
+        jogadores[nomeJogador] = new PlayerStatistics();
     }
 
     // Atualiza as estatísticas com base no resultado
     switch (resultado)
     {
         case -1: // Derrota
-            jogadores[nomeJogador] = (jogadores[nomeJogador].vitorias, jogadores[nomeJogador].empates, jogadores[nomeJogador].derrotas + 1);
+            jogadores[nomeJogador].Defeats++;
             break;
         case 0: // Empate
-            jogadores[nomeJogador] = (jogadores[nomeJogador].vitorias, jogadores[nomeJogador].empates + 1, jogadores[nomeJogador].derrotas);
+            jogadores[nomeJogador].Draws++;
             break;
         case 1: // Vitória
-            jogadores[nomeJogador] = (jogadores[nomeJogador].vitorias + 1, jogadores[nomeJogador].empates, jogadores[nomeJogador].derrotas);
+            jogadores[nomeJogador].Victories++;
             break;
     }
-
-    // Salva as estatísticas após a atualização
-    SalvarEstatisticas();
 }
 
-// Função para salvar o dicionário de jogadores no arquivo JSON
+/// <summary>
+/// Salva as estatísticas dos jogadores em um arquivo JSON no diretório de aplicativos locais.
+/// </summary>
 void SalvarEstatisticas()
 {
     try
     {
-        string json = JsonSerializer.Serialize(jogadores, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText("pontuacoes.json", json); // Salva no arquivo JSON
+        string caminhoArquivo = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Jokempo",
+            "pontuacoes.json"
+        );
+
+        // Cria o diretório se não existir
+        Directory.CreateDirectory(Path.GetDirectoryName(caminhoArquivo));
+
+        if (jogadores.Count > 0)
+        {
+            var opcoes = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            string json = JsonSerializer.Serialize(jogadores, opcoes);
+            File.WriteAllText(caminhoArquivo, json, System.Text.Encoding.UTF8);
+
+            Console.WriteLine($"Estatísticas salvas em: {caminhoArquivo}");
+        }
+        else
+        {
+            Console.WriteLine("Não há estatísticas para salvar.");
+        }
     }
     catch (Exception ex)
     {
@@ -442,30 +531,67 @@ void SalvarEstatisticas()
     }
 }
 
+/// <summary>
+/// Carrega as estatísticas dos jogadores de um arquivo JSON.
+/// </summary>
 void CarregarEstatisticas()
 {
     try
     {
-        if (File.Exists("pontuacoes.json"))
+        string caminhoArquivo = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Jokempo",
+            "pontuacoes.json"
+        );
+
+        if (File.Exists(caminhoArquivo))
         {
-            string json = File.ReadAllText("pontuacoes.json");
-            jogadores = JsonSerializer.Deserialize<Dictionary<string, (int vitorias, int empates, int derrotas)>>(json);
+            string json = File.ReadAllText(caminhoArquivo, System.Text.Encoding.UTF8);
+
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                var opcoes = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                jogadores = JsonSerializer.Deserialize<Dictionary<string, PlayerStatistics>>(json, opcoes);
+
+                if (jogadores != null)
+                {
+                    EscreverMensagem("Estatísticas carregadas com sucesso!");
+                    
+                }
+                else
+                {
+                    Console.WriteLine("Falha na deserialização do JSON.");
+                    jogadores = new Dictionary<string, PlayerStatistics>();
+                }
+            }
+            else
+            {
+                Console.WriteLine("Arquivo JSON está vazio.");
+                jogadores = new Dictionary<string, PlayerStatistics>();
+            }
         }
         else
         {
-            jogadores = new Dictionary<string, (int vitorias, int empates, int derrotas)>();
+            jogadores = new Dictionary<string, PlayerStatistics>();
+            Console.WriteLine("Arquivo de estatísticas não encontrado. Criando novo.");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Erro ao carregar as estatísticas: {ex.Message}");
+        Console.WriteLine($"Erro ao carregar estatísticas: {ex.Message}");
+        jogadores = new Dictionary<string, PlayerStatistics>();
     }
 }
 
 /// <summary>
-/// Exibe a lista de jogadores cadastrados e suas estatísticas.
+/// Exibe uma lista detalhada de estatísticas de todos os jogadores cadastrados.
 /// </summary>
-/// <param name="continuar">Referência para a variável que armazena a decisão do jogador sobre continuar ou não.</param>
+/// <param name="continuar">Referência para a variável que controla a continuação do jogo.</param>
+
 void ListarEstatisticasJogadores(ref char continuar)
 {
     LimparTela();
@@ -480,7 +606,7 @@ void ListarEstatisticasJogadores(ref char continuar)
     EscreverMensagem("|       Jogador       |  Vitórias  |  Empates  |  Derrotas  |");
     foreach (var jogador in jogadores)
     {
-        EscreverMensagem($"|  {jogador.Key.PadRight(19)}|  {jogador.Value.vitorias.ToString().PadRight(10)}|  {jogador.Value.empates.ToString().PadRight(9)}|  {jogador.Value.derrotas.ToString().PadRight(10)}|");
+        EscreverMensagem($"|  {jogador.Key.PadRight(19)}|  {jogador.Value.Victories.ToString().PadRight(10)}|  {jogador.Value.Draws.ToString().PadRight(9)}|  {jogador.Value.Defeats.ToString().PadRight(10)}|");
     }
     EscreverMensagem("_____________________________________________________________");
 
@@ -493,7 +619,7 @@ void ListarEstatisticasJogadores(ref char continuar)
 #region Fluxo Principal
 Inicializar();
 
-var continuar = ExibirMenu("😀 Olá! Vamos jogar Jokempo?", ('1', "Sim", ConsoleColor.DarkBlue), ('0', "Não", ConsoleColor.Red));
+var continuar = ExibirMenu("😀 Olá! Vamos jogar Jokempo -1?", ('1', "Sim", ConsoleColor.DarkBlue), ('0', "Não", ConsoleColor.Red));
 
 
 while (continuar != '0')
@@ -532,5 +658,6 @@ while (continuar != '0')
 }
 
 LimparTela();
+SalvarEstatisticas();
 EscreverMensagem("👋 Tchau! Até a próxima");
 #endregion
