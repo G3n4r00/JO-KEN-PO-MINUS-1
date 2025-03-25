@@ -279,47 +279,8 @@ char EscolherMaoEntreDuas(char mao1, char mao2)
         { '2', ("Tesoura ✌", ConsoleColor.DarkCyan) }
     };
 
-    // Tempo máximo para o jogador fazer a escolha (em segundos)
-    int tempoLimite = 10;
-
-    // Variável para armazenar o valor da escolha do jogador
-    char escolhaJogador = '\0'; // Inicia com valor vazio (caso o tempo acabe sem escolha)
-
-    // Exibe o menu com as duas opções escolhidas
-    Task.Run(() =>
-    {
-        // Exibe o texto inicial
-        EscreverMensagem($"Escolha uma mão! Tempo restante: {tempoLimite}s");
-
-        // Contador de tempo
-        for (int i = tempoLimite; i >= 0; i--)
-        {
-            // Limpa a linha do contador e atualiza o número de segundos
-            Console.SetCursorPosition(0, Console.CursorTop);  // Volta o cursor para o começo da linha
-            Console.Write(new string(' ', Console.WindowWidth)); // Limpa a linha
-            Console.SetCursorPosition(0, Console.CursorTop);  // Volta o cursor para o começo da linha novamente
-            EscreverMensagem($"Escolha uma mão! Tempo restante: {i}s");
-
-            // Atualiza o contador a cada segundo
-            Thread.Sleep(1000);
-
-            // Se já houver uma escolha, sai do loop
-            if (escolhaJogador != '\0')
-            {
-                
-                break;
-            }
-        }
-
-        // Se não houver escolha até o final do tempo, retorna uma escolha padrão
-        if (escolhaJogador == '\0')
-        {
-            escolhaJogador = mao1;
-        }
-    });
-
-    // Espera a escolha do jogador (até o tempo limite)
-    escolhaJogador = ExibirMenu("Escolha uma mão:",
+    
+    char escolhaJogador = ExibirMenu("Escolha uma mão:",
         (mao1, opcoes[mao1].texto, opcoes[mao1].cor),
         (mao2, opcoes[mao2].texto, opcoes[mao2].cor));
 
@@ -596,20 +557,38 @@ void ListarEstatisticasJogadores(ref char continuar)
 {
     LimparTela();
     Console.BackgroundColor = ConsoleColor.DarkGray;
-    EscreverMensagem("Jogadores e suas estatísticas:");
-
+    EscreverMensagem("Ranking de Jogadores:");
     LimparLinha();
-
     Console.WriteLine("");
 
-    EscreverMensagem("_____________________________________________________________");
-    EscreverMensagem("|       Jogador       |  Vitórias  |  Empates  |  Derrotas  |");
-    foreach (var jogador in jogadores)
-    {
-        EscreverMensagem($"|  {jogador.Key.PadRight(19)}|  {jogador.Value.Victories.ToString().PadRight(10)}|  {jogador.Value.Draws.ToString().PadRight(9)}|  {jogador.Value.Defeats.ToString().PadRight(10)}|");
-    }
-    EscreverMensagem("_____________________________________________________________");
+    // Calcula pontuação e cria a lista ordenada
+    var ranking = jogadores
+        .Select(j => new
+        {
+            Nome = j.Key,
+            Jogador = j.Value,
+            Pontuacao = (j.Value.Victories * 2) + j.Value.Draws - j.Value.Defeats
+        })
+        .OrderByDescending(x => x.Pontuacao)
+        .ToList();
 
+    EscreverMensagem("__________________________________________________________________________");
+    EscreverMensagem("|  Pos  |     Jogador     |  Vitórias  |  Empates  |  Derrotas  | Pontos |");
+    EscreverMensagem("|------------------------------------------------------------------------|");
+
+    for (int i = 0; i < ranking.Count; i++)
+    {
+        var jogador = ranking[i];
+        EscreverMensagem(
+            $"|  {(i + 1).ToString().PadRight(4)} |  {jogador.Nome.PadRight(15)} |  " +
+            $"{jogador.Jogador.Victories.ToString().PadRight(9)} |  " +
+            $"{jogador.Jogador.Draws.ToString().PadRight(8)} |  " +
+            $"{jogador.Jogador.Defeats.ToString().PadRight(9)} | " +
+            $"{jogador.Pontuacao.ToString().PadRight(5)} |"
+        );
+    }
+
+    EscreverMensagem("_________________________________________________________________");
     Console.WriteLine("");
     continuar = ExibirMenu("E agora? Quer iniciar uma nova partida?", ('1', "Sim", ConsoleColor.DarkBlue), ('0', "Não", ConsoleColor.Red));
 }
